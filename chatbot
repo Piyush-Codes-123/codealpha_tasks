@@ -1,0 +1,623 @@
+import tkinter as tk
+from tkinter import messagebox
+from datetime import datetime
+
+
+class RuleBasedChatbot:
+
+    def __init__(self, root):
+
+        self.root = root
+
+        self.root.title("EchoBot - Rule Based Chatbot")
+        self.root.geometry("850x700")
+        self.root.resizable(False, False)
+        self.root.configure(bg="#e8eef5")
+
+        # Chatbot responses
+        self.responses = {
+            "hello": "Hi! 👋 Nice to meet you.",
+            "hi": "Hello! How can I help you?",
+            "hey": "Hey! What's up?",
+            "how are you": "I'm fine, thanks! 😊",
+            "what is your name": "I'm EchoBot, a simple rule-based chatbot.",
+            "who are you": "I'm EchoBot, created using Python and Tkinter.",
+            "help": "You can say hello, ask how I am, ask my name, or say bye.",
+            "thanks": "You're welcome! 😊",
+            "thank you": "You're welcome!",
+            "bye": "Goodbye! Have a great day! 👋"
+        }
+
+        self.create_ui()
+
+        self.add_bot_message(
+            "Hello! I'm EchoBot 🤖\n"
+            "Try saying 'hello', 'how are you', or 'bye'."
+        )
+
+    # ==========================================
+    # USER INTERFACE
+    # ==========================================
+
+    def create_ui(self):
+
+        # ---------------- HEADER ----------------
+
+        header = tk.Frame(
+            self.root,
+            bg="#2563eb",
+            height=80
+        )
+
+        header.pack(
+            fill="x"
+        )
+
+        # Bot icon
+        tk.Label(
+            header,
+            text="🤖",
+            font=("Segoe UI Emoji", 30),
+            bg="#2563eb",
+            fg="white"
+        ).pack(
+            side="left",
+            padx=(25, 10)
+        )
+
+        title_frame = tk.Frame(
+            header,
+            bg="#2563eb"
+        )
+
+        title_frame.pack(
+            side="left"
+        )
+
+        tk.Label(
+            title_frame,
+            text="EchoBot",
+            font=("Segoe UI", 20, "bold"),
+            bg="#2563eb",
+            fg="white"
+        ).pack(
+            anchor="w"
+        )
+
+        tk.Label(
+            title_frame,
+            text="Simple Rule-Based Assistant • CodeAlpha Task 4",
+            font=("Segoe UI", 9),
+            bg="#2563eb",
+            fg="#dbeafe"
+        ).pack(
+            anchor="w"
+        )
+
+        # Online indicator
+        status_frame = tk.Frame(
+            header,
+            bg="#2563eb"
+        )
+
+        status_frame.pack(
+            side="right",
+            padx=25
+        )
+
+        tk.Label(
+            status_frame,
+            text="●",
+            font=("Arial", 12),
+            fg="#4ade80",
+            bg="#2563eb"
+        ).pack(
+            side="left"
+        )
+
+        tk.Label(
+            status_frame,
+            text=" Online",
+            font=("Segoe UI", 10, "bold"),
+            fg="white",
+            bg="#2563eb"
+        ).pack(
+            side="left"
+        )
+
+        # ---------------- CHAT AREA ----------------
+
+        chat_container = tk.Frame(
+            self.root,
+            bg="#e8eef5"
+        )
+
+        chat_container.pack(
+            fill="both",
+            expand=True,
+            padx=25,
+            pady=(20, 10)
+        )
+
+        # Canvas
+        self.canvas = tk.Canvas(
+            chat_container,
+            bg="#f8fafc",
+            highlightthickness=0
+        )
+
+        self.canvas.pack(
+            side="left",
+            fill="both",
+            expand=True
+        )
+
+        # Scrollbar
+        scrollbar = tk.Scrollbar(
+            chat_container,
+            orient="vertical",
+            command=self.canvas.yview
+        )
+
+        scrollbar.pack(
+            side="right",
+            fill="y"
+        )
+
+        self.canvas.configure(
+            yscrollcommand=scrollbar.set
+        )
+
+        # Messages frame
+        self.messages_frame = tk.Frame(
+            self.canvas,
+            bg="#f8fafc"
+        )
+
+        self.canvas_window = self.canvas.create_window(
+            (0, 0),
+            window=self.messages_frame,
+            anchor="nw"
+        )
+
+        self.messages_frame.bind(
+            "<Configure>",
+            self.update_scroll_region
+        )
+
+        self.canvas.bind(
+            "<Configure>",
+            self.resize_messages
+        )
+
+        # ---------------- QUICK REPLIES ----------------
+
+        quick_frame = tk.Frame(
+            self.root,
+            bg="#e8eef5"
+        )
+
+        quick_frame.pack(
+            fill="x",
+            padx=25,
+            pady=5
+        )
+
+        tk.Label(
+            quick_frame,
+            text="Quick replies:",
+            font=("Segoe UI", 9, "bold"),
+            bg="#e8eef5",
+            fg="#64748b"
+        ).pack(
+            side="left",
+            padx=(0, 8)
+        )
+
+        quick_buttons = [
+            ("Hello", "hello"),
+            ("How are you?", "how are you"),
+            ("Your name?", "what is your name"),
+            ("Bye", "bye")
+        ]
+
+        for text, command in quick_buttons:
+
+            button = tk.Button(
+                quick_frame,
+                text=text,
+                font=("Segoe UI", 9),
+                bg="white",
+                fg="#334155",
+                activebackground="#dbeafe",
+                relief="solid",
+                bd=1,
+                padx=10,
+                cursor="hand2",
+                command=lambda msg=command: self.quick_message(msg)
+            )
+
+            button.pack(
+                side="left",
+                padx=3
+            )
+
+        # ---------------- INPUT AREA ----------------
+
+        input_container = tk.Frame(
+            self.root,
+            bg="white",
+            height=75
+        )
+
+        input_container.pack(
+            fill="x",
+            padx=25,
+            pady=(5, 20)
+        )
+
+        # Entry
+        self.entry = tk.Entry(
+            input_container,
+            font=("Segoe UI", 12),
+            bg="white",
+            fg="#1e293b",
+            insertbackground="#2563eb",
+            relief="flat"
+        )
+
+        self.entry.pack(
+            side="left",
+            fill="both",
+            expand=True,
+            padx=(20, 10),
+            pady=15
+        )
+
+        self.entry.insert(
+            0,
+            "Type your message..."
+        )
+
+        self.entry.config(
+            fg="#94a3b8"
+        )
+
+        self.entry.bind(
+            "<FocusIn>",
+            self.clear_placeholder
+        )
+
+        self.entry.bind(
+            "<Return>",
+            lambda event: self.send_message()
+        )
+
+        # Send button
+        send_button = tk.Button(
+            input_container,
+            text="SEND  ➤",
+            font=("Segoe UI", 10, "bold"),
+            bg="#2563eb",
+            fg="white",
+            activebackground="#1d4ed8",
+            activeforeground="white",
+            relief="flat",
+            width=12,
+            height=2,
+            cursor="hand2",
+            command=self.send_message
+        )
+
+        send_button.pack(
+            side="right",
+            padx=10
+        )
+
+        # Clear button
+        clear_button = tk.Button(
+            input_container,
+            text="Clear",
+            font=("Segoe UI", 9),
+            bg="#f1f5f9",
+            fg="#475569",
+            activebackground="#e2e8f0",
+            relief="flat",
+            width=7,
+            command=self.clear_chat
+        )
+
+        clear_button.pack(
+            side="right"
+        )
+
+        self.entry.focus()
+
+    # ==========================================
+    # PLACEHOLDER
+    # ==========================================
+
+    def clear_placeholder(self, event=None):
+
+        if self.entry.get() == "Type your message...":
+
+            self.entry.delete(
+                0,
+                tk.END
+            )
+
+            self.entry.config(
+                fg="#1e293b"
+            )
+
+    # ==========================================
+    # SEND MESSAGE
+    # ==========================================
+
+    def send_message(self):
+
+        message = self.entry.get().strip()
+
+        if not message:
+            return
+
+        if message == "Type your message...":
+            return
+
+        self.add_user_message(
+            message
+        )
+
+        self.entry.delete(
+            0,
+            tk.END
+        )
+
+        # Process after short delay
+        self.root.after(
+            400,
+            lambda: self.generate_reply(message)
+        )
+
+    # ==========================================
+    # QUICK MESSAGE
+    # ==========================================
+
+    def quick_message(self, message):
+
+        self.entry.delete(
+            0,
+            tk.END
+        )
+
+        self.entry.insert(
+            0,
+            message
+        )
+
+        self.send_message()
+
+    # ==========================================
+    # CHATBOT LOGIC
+    # ==========================================
+
+    def generate_reply(self, message):
+
+        user_input = message.lower().strip()
+
+        # Exact predefined response
+        if user_input in self.responses:
+
+            response = self.responses[user_input]
+
+        elif "hello" in user_input:
+
+            response = "Hi! 👋 How can I help you?"
+
+        elif "how are you" in user_input:
+
+            response = "I'm fine, thanks! 😊"
+
+        elif "bye" in user_input:
+
+            response = "Goodbye! Have a great day! 👋"
+
+        elif "name" in user_input:
+
+            response = "My name is EchoBot 🤖"
+
+        elif "thank" in user_input:
+
+            response = "You're welcome! 😊"
+
+        else:
+
+            response = (
+                "I'm a simple rule-based chatbot, "
+                "so I don't understand that yet.\n"
+                "Try saying 'hello', 'how are you', or 'bye'."
+            )
+
+        self.add_bot_message(
+            response
+        )
+
+        # Close after goodbye
+        if user_input == "bye":
+
+            self.root.after(
+                1500,
+                self.root.destroy
+            )
+
+    # ==========================================
+    # USER MESSAGE BUBBLE
+    # ==========================================
+
+    def add_user_message(self, message):
+
+        outer = tk.Frame(
+            self.messages_frame,
+            bg="#f8fafc"
+        )
+
+        outer.pack(
+            fill="x",
+            padx=15,
+            pady=6
+        )
+
+        bubble = tk.Label(
+            outer,
+            text=message,
+            font=("Segoe UI", 10),
+            bg="#2563eb",
+            fg="white",
+            padx=15,
+            pady=10,
+            wraplength=450,
+            justify="left"
+        )
+
+        bubble.pack(
+            side="right"
+        )
+
+        time_label = tk.Label(
+            outer,
+            text=datetime.now().strftime("%H:%M"),
+            font=("Segoe UI", 7),
+            bg="#f8fafc",
+            fg="#94a3b8"
+        )
+
+        time_label.pack(
+            side="right",
+            padx=6,
+            pady=(20, 0)
+        )
+
+        self.scroll_down()
+
+    # ==========================================
+    # BOT MESSAGE BUBBLE
+    # ==========================================
+
+    def add_bot_message(self, message):
+
+        outer = tk.Frame(
+            self.messages_frame,
+            bg="#f8fafc"
+        )
+
+        outer.pack(
+            fill="x",
+            padx=15,
+            pady=6
+        )
+
+        avatar = tk.Label(
+            outer,
+            text="🤖",
+            font=("Segoe UI Emoji", 18),
+            bg="#f8fafc"
+        )
+
+        avatar.pack(
+            side="left",
+            anchor="n"
+        )
+
+        bubble = tk.Label(
+            outer,
+            text=message,
+            font=("Segoe UI", 10),
+            bg="#e2e8f0",
+            fg="#1e293b",
+            padx=15,
+            pady=10,
+            wraplength=450,
+            justify="left"
+        )
+
+        bubble.pack(
+            side="left",
+            padx=8
+        )
+
+        time_label = tk.Label(
+            outer,
+            text=datetime.now().strftime("%H:%M"),
+            font=("Segoe UI", 7),
+            bg="#f8fafc",
+            fg="#94a3b8"
+        )
+
+        time_label.pack(
+            side="left",
+            pady=(20, 0)
+        )
+
+        self.scroll_down()
+
+    # ==========================================
+    # SCROLL
+    # ==========================================
+
+    def update_scroll_region(self, event=None):
+
+        self.canvas.configure(
+            scrollregion=self.canvas.bbox("all")
+        )
+
+        self.scroll_down()
+
+    def resize_messages(self, event):
+
+        self.canvas.itemconfig(
+            self.canvas_window,
+            width=event.width
+        )
+
+    def scroll_down(self):
+
+        self.root.after(
+            50,
+            lambda: self.canvas.yview_moveto(1.0)
+        )
+
+    # ==========================================
+    # CLEAR CHAT
+    # ==========================================
+
+    def clear_chat(self):
+
+        answer = messagebox.askyesno(
+            "Clear Chat",
+            "Are you sure you want to clear the conversation?"
+        )
+
+        if not answer:
+            return
+
+        for widget in self.messages_frame.winfo_children():
+
+            widget.destroy()
+
+        self.add_bot_message(
+            "Chat cleared! 👋\n"
+            "How can I help you?"
+        )
+
+
+# ==========================================
+# MAIN
+# ==========================================
+
+if __name__ == "__main__":
+
+    root = tk.Tk()
+
+    chatbot = RuleBasedChatbot(root)
+
+    root.mainloop()
