@@ -1,0 +1,730 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import csv
+
+
+# ==============================
+# STOCK DATA
+# ==============================
+
+STOCK_PRICES = {
+    "AAPL": 180.00,
+    "TSLA": 250.00,
+    "GOOGL": 175.00,
+    "MSFT": 420.00,
+    "AMZN": 190.00,
+    "NVDA": 140.00,
+    "META": 560.00
+}
+
+
+class PortfolioApp:
+
+    def __init__(self, root):
+
+        self.root = root
+
+        self.root.title("Portfolio Dashboard")
+        self.root.geometry("1050x700")
+        self.root.resizable(False, False)
+        self.root.configure(bg="#0f172a")
+
+        self.portfolio = []
+
+        self.create_ui()
+
+    # ==============================
+    # MAIN UI
+    # ==============================
+
+    def create_ui(self):
+
+        # Header
+        header = tk.Frame(
+            self.root,
+            bg="#111827",
+            height=85
+        )
+
+        header.pack(
+            fill="x"
+        )
+
+        tk.Label(
+            header,
+            text="PORTFOLIO",
+            font=("Segoe UI", 25, "bold"),
+            fg="#38bdf8",
+            bg="#111827"
+        ).pack(
+            side="left",
+            padx=30,
+            pady=18
+        )
+
+        tk.Label(
+            header,
+            text="Stock Investment Dashboard",
+            font=("Segoe UI", 11),
+            fg="#94a3b8",
+            bg="#111827"
+        ).pack(
+            side="right",
+            padx=30
+        )
+
+        # Main
+        main = tk.Frame(
+            self.root,
+            bg="#0f172a"
+        )
+
+        main.pack(
+            fill="both",
+            expand=True,
+            padx=30,
+            pady=25
+        )
+
+        # ==============================
+        # STAT CARDS
+        # ==============================
+
+        cards = tk.Frame(
+            main,
+            bg="#0f172a"
+        )
+
+        cards.pack(
+            fill="x"
+        )
+
+        self.total_card = self.create_card(
+            cards,
+            "TOTAL INVESTMENT",
+            "$0.00",
+            "#38bdf8"
+        )
+
+        self.holdings_card = self.create_card(
+            cards,
+            "HOLDINGS",
+            "0",
+            "#4ade80"
+        )
+
+        self.stocks_card = self.create_card(
+            cards,
+            "STOCK TYPES",
+            "0",
+            "#c084fc"
+        )
+
+        # ==============================
+        # ADD STOCK
+        # ==============================
+
+        add_frame = tk.LabelFrame(
+            main,
+            text="  ADD INVESTMENT  ",
+            font=("Segoe UI", 11, "bold"),
+            fg="#38bdf8",
+            bg="#1e293b",
+            bd=1,
+            relief="solid",
+            padx=15,
+            pady=15
+        )
+
+        add_frame.pack(
+            fill="x",
+            pady=20
+        )
+
+        tk.Label(
+            add_frame,
+            text="Stock",
+            font=("Segoe UI", 10, "bold"),
+            fg="#cbd5e1",
+            bg="#1e293b"
+        ).grid(
+            row=0,
+            column=0,
+            padx=10
+        )
+
+        self.stock_var = tk.StringVar()
+
+        self.stock_dropdown = ttk.Combobox(
+            add_frame,
+            textvariable=self.stock_var,
+            values=list(STOCK_PRICES.keys()),
+            state="readonly",
+            width=15,
+            font=("Segoe UI", 11)
+        )
+
+        self.stock_dropdown.grid(
+            row=0,
+            column=1,
+            padx=10
+        )
+
+        self.stock_dropdown.current(0)
+
+        tk.Label(
+            add_frame,
+            text="Quantity",
+            font=("Segoe UI", 10, "bold"),
+            fg="#cbd5e1",
+            bg="#1e293b"
+        ).grid(
+            row=0,
+            column=2,
+            padx=10
+        )
+
+        self.quantity_entry = tk.Entry(
+            add_frame,
+            width=15,
+            font=("Segoe UI", 11),
+            bg="#0f172a",
+            fg="white",
+            insertbackground="white",
+            relief="flat"
+        )
+
+        self.quantity_entry.grid(
+            row=0,
+            column=3,
+            padx=10
+        )
+
+        self.price_label = tk.Label(
+            add_frame,
+            text="Price: $180.00",
+            font=("Segoe UI", 10, "bold"),
+            fg="#4ade80",
+            bg="#1e293b"
+        )
+
+        self.price_label.grid(
+            row=0,
+            column=4,
+            padx=15
+        )
+
+        add_button = tk.Button(
+            add_frame,
+            text="+ ADD STOCK",
+            font=("Segoe UI", 10, "bold"),
+            bg="#0284c7",
+            fg="white",
+            activebackground="#0369a1",
+            relief="flat",
+            width=15,
+            height=2,
+            cursor="hand2",
+            command=self.add_stock
+        )
+
+        add_button.grid(
+            row=0,
+            column=5,
+            padx=10
+        )
+
+        self.stock_dropdown.bind(
+            "<<ComboboxSelected>>",
+            self.update_price
+        )
+
+        # ==============================
+        # TABLE
+        # ==============================
+
+        table_frame = tk.Frame(
+            main,
+            bg="#1e293b"
+        )
+
+        table_frame.pack(
+            fill="both",
+            expand=True
+        )
+
+        tk.Label(
+            table_frame,
+            text="YOUR INVESTMENTS",
+            font=("Segoe UI", 12, "bold"),
+            fg="#f8fafc",
+            bg="#1e293b"
+        ).pack(
+            anchor="w",
+            padx=15,
+            pady=12
+        )
+
+        columns = (
+            "Stock",
+            "Quantity",
+            "Price",
+            "Investment"
+        )
+
+        style = ttk.Style()
+
+        style.theme_use("clam")
+
+        style.configure(
+            "Treeview",
+            background="#0f172a",
+            foreground="#e2e8f0",
+            fieldbackground="#0f172a",
+            rowheight=35,
+            font=("Segoe UI", 10)
+        )
+
+        style.configure(
+            "Treeview.Heading",
+            background="#334155",
+            foreground="white",
+            font=("Segoe UI", 10, "bold")
+        )
+
+        self.table = ttk.Treeview(
+            table_frame,
+            columns=columns,
+            show="headings",
+            height=7
+        )
+
+        for column in columns:
+
+            self.table.heading(
+                column,
+                text=column
+            )
+
+            self.table.column(
+                column,
+                width=220,
+                anchor="center"
+            )
+
+        self.table.pack(
+            fill="both",
+            expand=True,
+            padx=15
+        )
+
+        # ==============================
+        # BOTTOM BUTTONS
+        # ==============================
+
+        bottom = tk.Frame(
+            main,
+            bg="#0f172a"
+        )
+
+        bottom.pack(
+            fill="x",
+            pady=15
+        )
+
+        self.create_button(
+            bottom,
+            "REMOVE SELECTED",
+            "#dc2626",
+            self.remove_stock
+        ).pack(
+            side="left",
+            padx=5
+        )
+
+        self.create_button(
+            bottom,
+            "CLEAR PORTFOLIO",
+            "#475569",
+            self.clear_portfolio
+        ).pack(
+            side="left",
+            padx=5
+        )
+
+        self.create_button(
+            bottom,
+            "EXPORT CSV",
+            "#16a34a",
+            self.save_csv
+        ).pack(
+            side="right",
+            padx=5
+        )
+
+    # ==============================
+    # CARD
+    # ==============================
+
+    def create_card(
+        self,
+        parent,
+        title,
+        value,
+        accent
+    ):
+
+        frame = tk.Frame(
+            parent,
+            bg="#1e293b",
+            width=300,
+            height=100
+        )
+
+        frame.pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=6
+        )
+
+        tk.Label(
+            frame,
+            text=title,
+            font=("Segoe UI", 9, "bold"),
+            fg="#94a3b8",
+            bg="#1e293b"
+        ).pack(
+            anchor="w",
+            padx=18,
+            pady=(15, 3)
+        )
+
+        label = tk.Label(
+            frame,
+            text=value,
+            font=("Segoe UI", 20, "bold"),
+            fg=accent,
+            bg="#1e293b"
+        )
+
+        label.pack(
+            anchor="w",
+            padx=18
+        )
+
+        return label
+
+    # ==============================
+    # BUTTON
+    # ==============================
+
+    def create_button(
+        self,
+        parent,
+        text,
+        color,
+        command
+    ):
+
+        return tk.Button(
+            parent,
+            text=text,
+            font=("Segoe UI", 10, "bold"),
+            bg=color,
+            fg="white",
+            activebackground=color,
+            activeforeground="white",
+            relief="flat",
+            width=18,
+            height=2,
+            cursor="hand2",
+            command=command
+        )
+
+    # ==============================
+    # UPDATE PRICE
+    # ==============================
+
+    def update_price(self, event=None):
+
+        stock = self.stock_var.get()
+
+        if stock:
+
+            price = STOCK_PRICES[stock]
+
+            self.price_label.config(
+                text=f"Price: ${price:.2f}"
+            )
+
+    # ==============================
+    # ADD STOCK
+    # ==============================
+
+    def add_stock(self):
+
+        stock = self.stock_var.get()
+
+        quantity_text = (
+            self.quantity_entry
+            .get()
+            .strip()
+        )
+
+        if not quantity_text:
+
+            messagebox.showerror(
+                "Invalid Quantity",
+                "Please enter a quantity."
+            )
+
+            return
+
+        try:
+
+            quantity = int(quantity_text)
+
+            if quantity <= 0:
+                raise ValueError
+
+        except ValueError:
+
+            messagebox.showerror(
+                "Invalid Quantity",
+                "Quantity must be a positive whole number."
+            )
+
+            return
+
+        price = STOCK_PRICES[stock]
+
+        investment = price * quantity
+
+        item = {
+            "stock": stock,
+            "quantity": quantity,
+            "price": price,
+            "investment": investment
+        }
+
+        self.portfolio.append(item)
+
+        self.table.insert(
+            "",
+            tk.END,
+            values=(
+                stock,
+                quantity,
+                f"${price:.2f}",
+                f"${investment:,.2f}"
+            )
+        )
+
+        self.quantity_entry.delete(
+            0,
+            tk.END
+        )
+
+        self.update_dashboard()
+
+    # ==============================
+    # DASHBOARD UPDATE
+    # ==============================
+
+    def update_dashboard(self):
+
+        total = sum(
+            item["investment"]
+            for item in self.portfolio
+        )
+
+        holdings = sum(
+            item["quantity"]
+            for item in self.portfolio
+        )
+
+        stock_types = len(
+            set(
+                item["stock"]
+                for item in self.portfolio
+            )
+        )
+
+        self.total_card.config(
+            text=f"${total:,.2f}"
+        )
+
+        self.holdings_card.config(
+            text=str(holdings)
+        )
+
+        self.stocks_card.config(
+            text=str(stock_types)
+        )
+
+    # ==============================
+    # REMOVE
+    # ==============================
+
+    def remove_stock(self):
+
+        selected = self.table.selection()
+
+        if not selected:
+
+            messagebox.showwarning(
+                "Nothing Selected",
+                "Select an investment first."
+            )
+
+            return
+
+        selected_item = selected[0]
+
+        values = self.table.item(
+            selected_item,
+            "values"
+        )
+
+        stock = values[0]
+
+        quantity = int(values[1])
+
+        for item in self.portfolio:
+
+            if (
+                item["stock"] == stock
+                and item["quantity"] == quantity
+            ):
+
+                self.portfolio.remove(item)
+
+                break
+
+        self.table.delete(
+            selected_item
+        )
+
+        self.update_dashboard()
+
+    # ==============================
+    # CLEAR
+    # ==============================
+
+    def clear_portfolio(self):
+
+        if not self.portfolio:
+            return
+
+        answer = messagebox.askyesno(
+            "Clear Portfolio",
+            "Are you sure you want to clear your entire portfolio?"
+        )
+
+        if answer:
+
+            self.portfolio.clear()
+
+            for item in self.table.get_children():
+
+                self.table.delete(item)
+
+            self.update_dashboard()
+
+    # ==============================
+    # SAVE CSV
+    # ==============================
+
+    def save_csv(self):
+
+        if not self.portfolio:
+
+            messagebox.showwarning(
+                "Empty Portfolio",
+                "Add investments before exporting."
+            )
+
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[
+                ("CSV Files", "*.csv"),
+                ("All Files", "*.*")
+            ]
+        )
+
+        if not file_path:
+            return
+
+        try:
+
+            with open(
+                file_path,
+                "w",
+                newline=""
+            ) as file:
+
+                writer = csv.writer(file)
+
+                writer.writerow(
+                    [
+                        "Stock",
+                        "Quantity",
+                        "Price",
+                        "Investment"
+                    ]
+                )
+
+                for item in self.portfolio:
+
+                    writer.writerow(
+                        [
+                            item["stock"],
+                            item["quantity"],
+                            item["price"],
+                            item["investment"]
+                        ]
+                    )
+
+                total = sum(
+                    item["investment"]
+                    for item in self.portfolio
+                )
+
+                writer.writerow([])
+
+                writer.writerow(
+                    [
+                        "TOTAL",
+                        "",
+                        "",
+                        total
+                    ]
+                )
+
+            messagebox.showinfo(
+                "Export Complete",
+                "Portfolio exported successfully!"
+            )
+
+        except Exception as error:
+
+            messagebox.showerror(
+                "Export Error",
+                str(error)
+            )
+
+
+# ==============================
+# MAIN
+# ==============================
+
+if __name__ == "__main__":
+
+    root = tk.Tk()
+
+    app = PortfolioApp(root)
+
+    root.mainloop()
